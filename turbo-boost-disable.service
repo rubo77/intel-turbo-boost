@@ -1,0 +1,10 @@
+[Unit]
+Description=disables turbo-boost
+
+[Service]
+TimeoutStartSec=infinity
+ExecStartPre=/bin/sleep 240
+ExecStart=/usr/local/sbin/turbo-boost.sh disable
+
+[Install]
+WantedBy=default.target
