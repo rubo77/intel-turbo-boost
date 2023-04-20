@@ -38,4 +38,4 @@ Update systemd with:
 
 ## Thanks to
 
-http://notepad2.blogspot.com/2014/11/a-script-to-turn-off-intel-cpu-turbo.html
+https://notepad2.blogspot.com/2014/11/a-script-to-turn-off-intel-cpu-turbo.html
