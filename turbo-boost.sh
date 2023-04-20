@@ -2,29 +2,41 @@
 
 DESKTOP_ICON=/usr/share/applications/toggle-turbo-boost.desktop
 
+STATE_FILE=/var/tmp/toggle-boost-state
+A=$1
+
 is_root () {
     return $(id -u)
 }
 
-has_sudo() {
+run_with_sudo() {
     local prompt
-
     prompt=$(sudo -nv 2>&1)
     if [ $? -eq 0 ]; then
-    	# has_sudo__pass_set
-	return 0
+        # the current user has sudo and the password is already set
+        if [ "$(whoami)" != "root" ]; then
+            # restart script as root
+            exec sudo su - <<EOF
+                "$0" "$A"
+EOF
+            exit
+        fi
     elif echo $prompt | grep -q '^sudo:'; then
-    	# has_sudo__needs_pass"
-	return 0
+        echo "the current user has sudo but needs the password entered"
+        return 1
     else
-	echo "no_sudo"
-	return 1
+        echo "the current user has no sudo rights"
+        return 1
     fi
 }
 
-if ! is_root && ! has_sudo; then
+if ! is_root && ! run_with_sudo; then
     echo "Error: need to call this script with sudo or as root!"         
     exit 1
+else
+    if [ -f $STATE_FILE ]; then
+        cat $STATE_FILE
+    fi
 fi
 
 modprobe msr
@@ -32,25 +44,29 @@ if [[ -z $(which rdmsr) ]]; then
     echo "msr-tools is not installed. Run 'sudo apt-get install msr-tools' to install it." >&2
     exit 1
 fi
-
-if [[ ! -z "$1" && "$1" != "toggle" && "$1" != "enable" && "$1" != "disable"  && "$1" != "status" ]]; then
-    echo "Invalid argument: $A" >&2
-    echo ""
+if [ "$A" == "" ]; then
+    A=toggle
+fi
+if [[ ! -z "$A" && "$A" != "toggle" && "$A" != "enable" && "$A" != "disable"  && "$A" != "status" ]]; then
+    if [[ "$A" != "-h" &&  "$A" != "--help" ]]; then
+        echo "Invalid argument: $A" >&2
+        echo ""
+    fi
     echo "Usage: $(basename $0) [disable|enable|toggle|status]"
     exit 1
 fi
-A=$1
 cores=$(cat /proc/cpuinfo | grep processor | awk '{print $3}')
 initial_state=$(rdmsr -p1 0x1a0 -f 38:38)
+echo "$A turbo boost..."
 for core in $cores; do
     if [[ $A == "toggle" ]]; then
         echo -n "state was "
-	if [[ $initial_state -eq 1 ]]; then
+        if [[ $initial_state -eq 1 ]]; then
             echo "disabled"
-	    A="enable"
-	else
-	    echo "enabled"
-	    A="disable"
+            A="enable"
+        else
+            echo "enabled"
+            A="disable"
         fi
     fi
     if [[ $A == "disable" ]]; then
@@ -68,3 +84,9 @@ for core in $cores; do
         echo "core ${core}: enabled"
     fi
 done
+if [[ $state -eq 1 ]]; then
+    echo "last state: disabled">$STATE_FILE
+else
+    echo "last state: enabled">$STATE_FILE
+fi
+# sleep 1
