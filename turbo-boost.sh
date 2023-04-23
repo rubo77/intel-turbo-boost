@@ -33,10 +33,9 @@ EOF
 if ! is_root && ! run_with_sudo; then
     echo "Error: need to call this script with sudo or as root!"         
     exit 1
-else
-    if [ -f $STATE_FILE ]; then
-        cat $STATE_FILE
-    fi
+    #else
+    # already done in .desktop file:
+    # cat $STATE_FILE || true
 fi
 
 modprobe msr
@@ -89,4 +88,4 @@ if [[ $state -eq 1 ]]; then
 else
     echo "last state: enabled">$STATE_FILE
 fi
-# sleep 1
+sleep 3
